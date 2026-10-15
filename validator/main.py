@@ -42,7 +42,7 @@ class GroundLensAnswer(Validator):
             but not stored.
         fail_on (Iterable[str]): The GroundLens decisions that make the
             validator fail. Defaults to `("FAIL", "REVIEW")`.
-        locale (str): The locale the figures are written in, e.g. `es-ES`
+        locale (str): The locale the figures are written in, e.g. `es` or `de`
             for `1.234,5`. Defaults to `und`, which reads both conventions
             when they are unambiguous.
     """
