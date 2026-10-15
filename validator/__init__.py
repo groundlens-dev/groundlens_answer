@@ -1,3 +1,3 @@
-from .main import ValidatorTemplate
+from .main import GroundLensAnswer
 
-__all__ = ["ValidatorTemplate"]
+__all__ = ["GroundLensAnswer"]

@@ -1,15 +1,16 @@
 [project]
-name = "validator-template"
-version = "0.0.0"
-description = "Template repo for Guardrails Hub validators."
+name = "groundlens_answer"
+version = "0.1.0"
+description = "Validates that the figures in an LLM answer are supported by the passages it was written from, without a model."
 authors = [
-    {name = "Guardrails AI", email = "contact@guardrailsai.com"}
+    {name = "Javier Marin", email = "javier@groundlens.dev"}
 ]
 license = {file = "LICENSE"}
 readme = "README.md"
-requires-python = ">= 3.8.1"
+requires-python = ">= 3.10"
 dependencies = [
-    "guardrails-ai>=0.4.0"
+    "guardrails-ai>=0.5.0",
+    "groundlens>=6.0.1,<7"
 ]
 
 [project.optional-dependencies]
