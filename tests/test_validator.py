@@ -1,27 +1,65 @@
-# to run these, run 
-# make tests
+# to run these, run
+# make test
 
-from guardrails import Guard
+import groundlens as gl
 import pytest
-from validator import ValidatorTemplate
+from guardrails import Guard
 
-# We use 'exception' as the validator's fail action,
-#  so we expect failures to always raise an Exception
-# Learn more about corrective actions here:
-#  https://www.guardrailsai.com/docs/concepts/output/#%EF%B8%8F-specifying-corrective-actions
-guard = Guard.from_string(validators=[ValidatorTemplate(arg_1="arg_1", arg_2="arg_2", on_fail="exception")])
+from validator import GroundLensAnswer
+
+PASSAGES = ["In 2024, ACME's revenue reached €41.2 million, up from €38.0 million in 2023."]
+
+
+def guard(**kwargs):
+    return Guard().use(GroundLensAnswer(on_fail="exception", **kwargs))
+
 
 def test_pass():
-  test_output = "pass"
-  result = guard.parse(test_output)
-  
-  assert result.validation_passed is True
-  assert result.validated_output == test_output
+    answer = "ACME's revenue was €41.2 million in 2024."
+    result = guard().validate(answer, metadata={"passages": PASSAGES})
 
-def test_fail():
-  with pytest.raises(Exception) as exc_info:
-    test_output = "fail"
-    guard.parse(test_output)
-  
-  # Assert the exception has your error_message
-  assert str(exc_info.value) == "Validation failed for field with errors: {A descriptive but concise error message about why validation failed}"
+    assert result.validation_passed is True
+    assert result.validated_output == answer
+
+
+def test_fail_on_a_wrong_figure():
+    with pytest.raises(Exception) as exc_info:
+        guard().validate("ACME's revenue was €42.1 million in 2024.", metadata={"passages": PASSAGES})
+
+    message = str(exc_info.value)
+    assert "GroundLens decided FAIL" in message
+    assert "€42.1 million not in sources" in message
+
+
+def test_pass_on_a_computed_figure():
+    # 8.4% is in no passage: it is recomputed from the two supported amounts.
+    answer = "Revenue rose from €38.0 million to €41.2 million, up 8.4%."
+    result = guard().validate(answer, metadata={"passages": PASSAGES})
+
+    assert result.validation_passed is True
+
+
+def test_review_can_pass():
+    # A required scope key that the passages do not carry goes to REVIEW.
+    answer = "Revenue was €41.2 million."
+    metadata = {"passages": PASSAGES, "scope": {"entity": "ACME"}}
+
+    with pytest.raises(Exception) as exc_info:
+        guard().validate(answer, metadata=metadata)
+    assert "GroundLens decided REVIEW" in str(exc_info.value)
+
+    result = guard(fail_on=["FAIL"]).validate(answer, metadata=metadata)
+    assert result.validation_passed is True
+
+
+def test_records_are_kept(tmp_path):
+    guard(records_dir=str(tmp_path)).validate("ACME's revenue was €41.2 million in 2024.", metadata={"passages": PASSAGES})
+
+    lines = (tmp_path / "records.jsonl").read_text().splitlines()
+    assert len(lines) == 1
+    assert gl.Record.from_json(lines[0]).decision == "PASS"
+
+
+def test_passages_are_required():
+    with pytest.raises(Exception, match="passages"):
+        guard().validate("Revenue was €41.2 million.", metadata={})
